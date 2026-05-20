@@ -1,0 +1,43 @@
+# CelebA-HQ 256x256 — Primary experiment after 128x128 proof of concept
+
+dataset_name: celeba_hq
+data_root: ./data
+image_size: 256
+num_classes: 2            # binary: female=0 / male=1 (CelebA 'Male' attribute)
+
+# Privacy
+target_epsilon: 10.0
+delta: 1.0e-5
+num_teachers: 10
+num_queries: 5000
+n_student_steps: 5
+
+# Architecture
+latent_dim: 256
+base_channels_gen: 64
+base_channels_disc: 64
+base_channels_teacher: 32
+mamba_d_model: 512        # larger d_model for 256x256
+mamba_layers: 6
+scan_directions: [row, col, diag]
+
+# Training
+batch_size: 16            # reduced for memory at 256x256
+gen_lr: 0.0002
+student_lr: 0.0002
+teacher_lr: 0.0002
+teacher_epochs: 3
+retrain_interval: 50
+max_outer_steps: 15000
+
+# Logging
+log_interval: 100
+save_interval: 1000
+output_dir: ./outputs/celeba_hq_256
+checkpoint_dir: ./checkpoints/celeba_hq_256
+
+# Misc
+seed: 42
+device: cuda
+num_workers: 4
+pin_memory: true

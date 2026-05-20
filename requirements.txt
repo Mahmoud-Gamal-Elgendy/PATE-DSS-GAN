@@ -1,0 +1,33 @@
+# Core deep learning
+torch>=2.1.0
+torchvision>=0.16.0
+
+# HuggingFace datasets (CelebA-HQ and AFHQ loading)
+datasets>=2.18.0
+Pillow>=10.0.0
+
+# Mamba SSM (CUDA required for the efficient kernel)
+# Install separately if needed:
+#   pip install mamba-ssm  (requires CUDA 11.6+ and PyTorch 2.x)
+# A pure-PyTorch fallback is used automatically if not installed.
+mamba-ssm>=1.2.0
+
+# Data & utilities
+numpy>=1.24.0
+PyYAML>=6.0
+tqdm>=4.65.0
+
+# Evaluation metrics
+scikit-learn>=1.3.0       # Precision/Recall/Density/Coverage
+
+# Clean-FID (more accurate FID for non-ImageNet resolutions) — optional
+# cleanfid>=0.1.35
+
+# Privacy accounting (RDP — implemented natively, but autodp is also compatible)
+# autodp>=0.2.3            # optional: cross-check RDP accounting
+
+# Visualization
+matplotlib>=3.7.0
+
+# Development tools
+pytest>=7.4.0

@@ -9,18 +9,6 @@
 This codebase implements the research proposal for combining:
 - **PATE** (Papernot et al. 2018) — differentially private teacher ensemble
 - **DSS-GAN** (Section 3) — hierarchical Mamba generator with Directional Latent Routing (DLR)
-- **Novel contribution** — first Mamba-based student discriminator in a PATE framework
-
-Target venue: **ICDM 2026** (June 5th)
-
----
-
-## Novelty
-
-1. First PATE framework with **Mamba-based discriminator** (O(N) vs O(N²) attention)
-2. First **differentially private GAN** with Mamba in both generator and discriminator
-3. **Directional privacy-utility trade-off**: DLR provides class-specific spatial priors under privacy constraints
-4. **Scalable**: DSS-GAN demonstrated 512×512; PATE-DSS-GAN maintains this with DP guarantees
 
 ---
 
@@ -56,81 +44,6 @@ PATE-DSS-GAN/
 ├── docs/
 │   └── ARCHITECTURE.md         # Detailed component reference
 └── requirements.txt
-```
-
----
-
-## Quick Start
-
-### 1. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-
-# For Mamba CUDA kernel (requires CUDA 11.6+):
-pip install mamba-ssm
-# A pure-PyTorch fallback is used automatically if mamba-ssm is unavailable.
-```
-
-### 2. Analyse Privacy Budget (Run This First)
-
-Before training, understand the σ-ε trade-off for your configuration:
-
-```bash
-python scripts/sigma_analysis.py \
-    --num_queries 5000 \
-    --num_teachers 10 \
-    --delta 1e-5 \
-    --epsilon_values 1.0 3.0 5.0 8.0 10.0
-```
-
-This outputs the required σ for each ε budget and plots the budget consumption curve.
-
-### 3. Verify Pipeline on CIFAR-10
-
-```bash
-python scripts/train.py --config configs/cifar10_32.yaml
-```
-
-CIFAR-10 is downloaded automatically via torchvision.
-
-### 4. Train on CelebA-HQ 128×128 (Proof of Concept)
-
-No manual download needed. The dataset streams from HuggingFace Hub on first use:
-
-```bash
-python scripts/train.py --config configs/celeba_hq_128.yaml
-```
-
-### 5. Train on AFHQ 256×256
-
-```bash
-python scripts/train.py --config configs/afhq_256.yaml
-```
-
-### 6. Evaluate
-
-```bash
-python scripts/evaluate.py \
-    --config configs/celeba_hq_128.yaml \
-    --checkpoint checkpoints/celeba_hq_128/ckpt_final.pt \
-    --num_samples 10000
-```
-
-### 7. Run Ablation Studies
-
-```bash
-# Privacy-utility curve (key result):
-python scripts/ablation.py \
-    --config configs/celeba_hq_128.yaml \
-    --ablation epsilon \
-    --epsilon_values 1.0 3.0 5.0 8.0 10.0
-
-# Scan direction ablation:
-python scripts/ablation.py \
-    --config configs/celeba_hq_128.yaml \
-    --ablation scan_directions \
-    --variants "['row']" "['row','col']" "['row','col','diag']"
 ```
 
 ---
@@ -178,9 +91,7 @@ All datasets load automatically — no manual download steps required.
 |---------|--------|---------|------|-------|
 | CelebA-HQ | `korexyz/celeba-hq-256x256` on HuggingFace | 2 (female / male) | 30K | Primary experiment |
 | AFHQ | `huggan/AFHQ` on HuggingFace | 3 (cat / dog / wild) | 15K | Secondary experiment |
-| CIFAR-10 | torchvision (auto-download) | 10 | 60K | Fast prototyping |
 
-**LSUN Bedroom excluded** — no class labels; DLR conditioning is ineffective.
 
 ### Loading datasets manually
 
@@ -199,32 +110,11 @@ HuggingFace caches the data under `~/.cache/huggingface/` after the first downlo
 
 ---
 
-## Privacy Expectations (Honest Reporting)
-
-| ε | σ (typical) | Expected Utility |
-|---|-------------|-----------------|
-| 10 | ~1.0–2.0 | Functional GAN output |
-| 5–8 | ~2.0–4.0 | Moderate utility loss |
-| 3 | ~5.0–10.0 | Possible degradation |
-| 1 | very large | Near-random labels likely |
-
-**The privacy-utility curve, even if flat, is a publishable finding.**
-
----
-
 ## Comparison Baselines
 
 | Method | Type | Notes |
 |--------|------|-------|
 | SPTI | Text-guided DP synthesis | Compare FID at matched ε |
 | DP-Diffusion | DP diffusion model | Compare FID at matched ε |
-| PATE-GAN | Tabular PATE-GAN | Image adaptation baseline |
 
 ---
-
-## Citation
-
-If you use this code, please cite the works it builds on:
-- PATE: Papernot et al. (2018), *Scalable Private Learning with PATE*
-- DSS-GAN: *Directional State-Space GAN*
-- Mamba: Gu & Dao (2023), *Mamba: Linear-Time Sequence Modeling with Selective State Spaces*
