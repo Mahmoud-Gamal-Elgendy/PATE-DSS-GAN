@@ -48,23 +48,6 @@ PATE-DSS-GAN/
 
 ---
 
-## Key Implementation Details
-
-### `calibrate_sigma()` — Critical Path
-
-Located in `src/accountant.py`. Derives σ via binary search from `(ε, N, k, δ)`.
-**This must be called at training start**, not hardcoded per dataset.
-
-```python
-from src.accountant import calibrate_sigma
-
-sigma = calibrate_sigma(
-    target_epsilon=10.0,
-    num_queries=5000,
-    num_teachers=10,
-    delta=1e-5,
-)
-```
 
 ### Privacy-Correct Vote Aggregation
 
