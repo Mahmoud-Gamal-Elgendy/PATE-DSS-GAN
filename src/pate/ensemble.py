@@ -66,6 +66,8 @@ class PATEEnsembleManager:
         retrain_interval: int = 50,
         teacher_epochs: int = 3,
         teacher_lr: float = 2e-4,
+        num_workers: int = 2,
+        pin_memory: bool = True,
         device: Optional[torch.device] = None,
     ) -> None:
         assert len(shards) == num_teachers, "Must provide one shard per teacher."
@@ -86,7 +88,13 @@ class PATEEnsembleManager:
 
         # Build per-shard dataloaders (persistent)
         self.shard_loaders: List[DataLoader] = [
-            make_dataloader(shard, batch_size=batch_size, shuffle=True)
+            make_dataloader(
+                shard,
+                batch_size=batch_size,
+                shuffle=True,
+                num_workers=num_workers,
+                pin_memory=pin_memory,
+            )
             for shard in shards
         ]
 

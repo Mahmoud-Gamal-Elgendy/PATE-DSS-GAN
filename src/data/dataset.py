@@ -1,7 +1,7 @@
 """
 Dataset wrappers for PATE-DSS-GAN.
 
-Supports CelebA-HQ, AFHQ, and CIFAR-10. Each dataset returns (image, label)
+Supports CelebA-HQ and AFHQ. Each dataset returns (image, label)
 pairs where label is the class index used for stratified partitioning and
 class-conditional generation via DSS-GAN's Directional Latent Routing (DLR).
 
@@ -9,7 +9,6 @@ HuggingFace sources
 -------------------
 - CelebA-HQ : korexyz/celeba-hq-256x256
 - AFHQ      : huggan/AFHQ
-- CIFAR-10  : torchvision (auto-downloaded)
 """
 
 from __future__ import annotations
@@ -20,7 +19,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 import torch
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
-from torchvision import datasets, transforms
+from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
 
@@ -205,31 +204,6 @@ class AFHQDataset(Dataset):
 
 
 # ---------------------------------------------------------------------------
-# CIFAR-10 wrapper (torchvision)
-# ---------------------------------------------------------------------------
-
-class CIFAR10Dataset(Dataset):
-    def __init__(
-        self,
-        root: str,
-        train: bool = True,
-        image_size: int = 32,
-        augment: bool = False,
-        download: bool = True,
-    ) -> None:
-        tfm = _image_transform(image_size, augment)
-        self._inner = datasets.CIFAR10(root=root, train=train, transform=tfm, download=download)
-        self.classes = self._inner.classes
-        self.targets: List[int] = list(self._inner.targets)
-
-    def __len__(self) -> int:
-        return len(self._inner)
-
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
-        return self._inner[idx]
-
-
-# ---------------------------------------------------------------------------
 # ImageDatasetWrapper — unified interface + subsetting
 # ---------------------------------------------------------------------------
 
@@ -265,11 +239,9 @@ class ImageDatasetWrapper(Dataset):
 
 def get_dataset(
     name: str,
-    root: str = "./data",
     image_size: int = 128,
     train: bool = True,
     augment: bool = False,
-    download: bool = True,
     hf_cache_dir: Optional[str] = None,
 ) -> ImageDatasetWrapper:
     """
@@ -278,18 +250,13 @@ def get_dataset(
     Parameters
     ----------
     name : str
-        One of 'celeba_hq', 'afhq', 'cifar10'.
-    root : str
-        Local cache root for CIFAR-10. HuggingFace datasets use
-        `hf_cache_dir` (or ~/.cache/huggingface by default).
+        One of 'celeba_hq', 'afhq'.
     image_size : int
         Target spatial resolution after resizing.
     train : bool
-        Training split. For CelebA-HQ/AFHQ maps to HF split='train'.
+        Training split (maps to HuggingFace split='train' or 'test').
     augment : bool
         Enable random flip + colour jitter during loading.
-    download : bool
-        Auto-download CIFAR-10 if not cached locally.
     hf_cache_dir : str, optional
         Custom cache directory for HuggingFace datasets.
 
@@ -297,7 +264,6 @@ def get_dataset(
     -------
     - celeba_hq : korexyz/celeba-hq-256x256  (HuggingFace)
     - afhq      : huggan/AFHQ                 (HuggingFace)
-    - cifar10   : torchvision CIFAR-10        (auto-download)
     """
     name = name.lower()
     split = "train" if train else "test"
@@ -316,16 +282,8 @@ def get_dataset(
             augment=augment,
             cache_dir=hf_cache_dir,
         )
-    elif name == "cifar10":
-        ds = CIFAR10Dataset(
-            root=root,
-            train=train,
-            image_size=image_size,
-            augment=augment,
-            download=download,
-        )
     else:
-        raise ValueError(f"Unknown dataset '{name}'. Choose from: celeba_hq, afhq, cifar10.")
+        raise ValueError(f"Unknown dataset '{name}'. Choose from: celeba_hq, afhq.")
 
     return ImageDatasetWrapper(ds)
 

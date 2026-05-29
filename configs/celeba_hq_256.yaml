@@ -1,7 +1,6 @@
 # CelebA-HQ 256x256 — Primary experiment after 128x128 proof of concept
 
 dataset_name: celeba_hq
-data_root: ./data
 image_size: 256
 num_classes: 2            # binary: female=0 / male=1 (CelebA 'Male' attribute)
 
@@ -12,23 +11,37 @@ num_teachers: 10
 num_queries: 5000
 n_student_steps: 5
 
-# Architecture
-latent_dim: 256
-base_channels_gen: 64
+# Architecture (aligned with DSS_GAN-main 256x256)
+latent_dim: 172
+base_channels_gen: 148
 base_channels_disc: 64
 base_channels_teacher: 32
-mamba_d_model: 512        # larger d_model for 256x256
+mamba_d_model: 512
 mamba_layers: 6
-scan_directions: [row, col, diag]
+scan_directions: [row_fwd, col_fwd, diag_left]
 
-# Training
+# Training (aligned with DSS_GAN-main)
 batch_size: 16            # reduced for memory at 256x256
-gen_lr: 0.0002
-student_lr: 0.0002
+gen_lr: 0.00009
+student_lr: 0.00003
 teacher_lr: 0.0002
 teacher_epochs: 3
 retrain_interval: 50
 max_outer_steps: 15000
+optimizer_betas: [0.0, 0.99]
+
+# Stabilisation (aligned with DSS_GAN-main)
+use_ema: true
+ema_decay: 0.999
+use_r1: true
+r1_gamma: 5.0
+r1_interval: 4
+use_diffaug: true
+diffaug_brightness: 0.1
+diffaug_contrast: 0.1
+diffaug_flip_prob: 0.5
+gradient_clip_gen: 10.0
+gradient_clip_disc: 15.0
 
 # Logging
 log_interval: 100

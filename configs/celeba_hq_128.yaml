@@ -2,7 +2,6 @@
 # Start here for initial validation. ε ∈ {5, 8, 10} before trying {1, 3}.
 
 dataset_name: celeba_hq
-data_root: ./data          # used only for CIFAR-10; HF datasets cache separately
 image_size: 128
 num_classes: 2            # binary: female=0 / male=1 (CelebA 'Male' attribute)
 
@@ -11,25 +10,42 @@ target_epsilon: 50.0      # start here; lower after utility confirmed
 delta: 1.0e-5
 num_teachers: 100
 num_queries: 5000         # estimated PATE queries over training
-n_student_steps: 5        # post-processing updates per query
+n_student_steps: 1        # post-processing updates per query (DSS-GAN D_STEPS=1)
 
-# Architecture
-latent_dim: 256
-base_channels_gen: 64
-base_channels_disc: 64
+# Architecture (aligned with DSS_GAN-main)
+latent_dim: 152
+base_channels_gen: 148
+base_channels_disc: 96
+channel_max: 512
 base_channels_teacher: 32
 mamba_d_model: 128
 mamba_layers: 4
-scan_directions: [row, col, diag]
+scan_directions: [row_fwd, col_bwd, diag_left]
 
-# Training
+# Training (aligned with DSS_GAN-main)
 batch_size: 4
-gen_lr: 0.0002
-student_lr: 0.0002
+gen_lr: 0.00009
+student_lr: 0.00003
 teacher_lr: 0.0002
 teacher_epochs: 3
 retrain_interval: 50
 max_outer_steps: 10000
+optimizer_betas: [0.0, 0.99]
+
+# Stabilisation (aligned with DSS_GAN-main)
+use_ema: true
+ema_decay: 0.999
+ema_decay_2: 0.9995
+ema_switch_images: 1000000
+use_r1: true
+r1_gamma: 5.0
+r1_interval: 4
+use_diffaug: true
+diffaug_brightness: 0.1
+diffaug_contrast: 0.1
+diffaug_flip_prob: 0.5
+gradient_clip_gen: 10.0
+gradient_clip_disc: 15.0
 
 # Logging
 log_interval: 50
