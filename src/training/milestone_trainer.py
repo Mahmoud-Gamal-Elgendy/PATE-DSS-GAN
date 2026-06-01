@@ -215,6 +215,7 @@ class MilestoneTrainer(PATEDSSGANTrainer):
         )
 
         t0 = time.time()
+        reuse_factor = max(1, getattr(cfg, "query_reuse_factor", 1))
 
         for step in range(cfg.max_outer_steps):
             did_retrain = self.ensemble_manager.maybe_retrain_check(step)
@@ -224,6 +225,7 @@ class MilestoneTrainer(PATEDSSGANTrainer):
                     fake_buffer.as_dataloader(cfg.batch_size), step=step
                 )
 
+            # ── ONE charged PATE query ──────────────────────────────────────
             fake_imgs, fake_classes = self._sample_fake(cfg.batch_size)
             noisy_labels, confidence = self.ensemble_manager.query_with_confidence(fake_imgs)
 
@@ -239,10 +241,16 @@ class MilestoneTrainer(PATEDSSGANTrainer):
                 )
                 break
 
-            d_loss = self._student_update(
-                fake_imgs, noisy_labels, cfg.n_student_steps, c=fake_classes
-            )
-            g_loss = self._generator_update(cfg.batch_size)
+            # ── N FREE post-processing updates on the released labels ───────
+            # Reusing already-released noisy labels incurs NO additional ε
+            # (post-processing). The student's labelled batch (fake_imgs,
+            # noisy_labels) is held fixed across the reuse block; the generator
+            # samples fresh z each inner step.
+            for _ in range(reuse_factor):
+                d_loss = self._student_update(
+                    fake_imgs, noisy_labels, cfg.n_student_steps, c=fake_classes
+                )
+                g_loss = self._generator_update(cfg.batch_size)
 
             if step % cfg.log_interval == 0:
                 eps = self.accountant.get_epsilon()

@@ -426,6 +426,7 @@ class PATEDSSGANTrainer:
         )
 
         t0 = time.time()
+        reuse_factor = max(1, getattr(cfg, "query_reuse_factor", 1))
 
         for step in range(cfg.max_outer_steps):
             # Periodic teacher retraining.
@@ -439,7 +440,7 @@ class PATEDSSGANTrainer:
             # Sample fake images
             fake_imgs, fake_classes = self._sample_fake(cfg.batch_size)
 
-            # PATE query (charges ε budget)
+            # PATE query (charges ε budget) — ONE charged query per outer step
             noisy_labels, confidence = self.ensemble_manager.query_with_confidence(fake_imgs)
 
             # Check privacy budget AFTER the query so no step is under-counted
@@ -452,11 +453,12 @@ class PATEDSSGANTrainer:
                 )
                 break
 
-            # Student post-processing updates (privacy-free)
-            d_loss = self._student_update(fake_imgs, noisy_labels, cfg.n_student_steps, c=fake_classes)
-
-            # Generator update
-            g_loss = self._generator_update(cfg.batch_size)
+            # N FREE post-processing updates on the released labels (no extra ε).
+            # Student's labelled batch is fixed across the reuse block; the
+            # generator samples fresh z each inner step.
+            for _ in range(reuse_factor):
+                d_loss = self._student_update(fake_imgs, noisy_labels, cfg.n_student_steps, c=fake_classes)
+                g_loss = self._generator_update(cfg.batch_size)
 
             # Logging
             if step % cfg.log_interval == 0:

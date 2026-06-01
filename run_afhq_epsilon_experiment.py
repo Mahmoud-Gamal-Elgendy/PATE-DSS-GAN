@@ -53,6 +53,7 @@ def build_config() -> TrainConfig:
         num_teachers=20,
         num_queries=5000,
         n_student_steps=1,          # aligned with DSS-GAN D_STEPS=1
+        query_reuse_factor=250,     # 250 free post-processing updates per charged query
 
         # Architecture — Table 13 @ 128×128
         # Latent: D_base=92, D_dir=20 → z_dim=92+20×3=152

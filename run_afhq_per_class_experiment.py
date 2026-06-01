@@ -52,6 +52,7 @@ def build_config() -> TrainConfig:
         num_teachers=20,
         num_queries=5000,
         n_student_steps=1,
+        query_reuse_factor=250,     # 250 free post-processing updates per charged query
         merge_ratio_mode="public_counts",
         num_synthetic_per_class=NUM_SAMPLE_IMAGES,
 

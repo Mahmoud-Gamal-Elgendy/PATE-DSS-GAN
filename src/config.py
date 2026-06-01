@@ -30,6 +30,11 @@ class TrainConfig:
     num_teachers: int = 10
     num_queries: int = 5000
     n_student_steps: int = 1
+    # Label reuse: number of FREE post-processing (student+generator) updates
+    # taken per charged PATE query. The released noisy labels are reused across
+    # these inner steps, so no additional ε is spent (post-processing). N=1
+    # reproduces the original "1 query → 1 step" behavior.
+    query_reuse_factor: int = 1
 
     # Training mode — "single" (default, whole-dataset) or "per_class_dp"
     # (one isolated model per class; merged via parallel composition).
