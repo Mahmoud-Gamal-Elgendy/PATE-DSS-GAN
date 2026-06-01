@@ -31,6 +31,19 @@ class TrainConfig:
     num_queries: int = 5000
     n_student_steps: int = 1
 
+    # Training mode — "single" (default, whole-dataset) or "per_class_dp"
+    # (one isolated model per class; merged via parallel composition).
+    training_mode: str = "single"
+    # Per-class ε budget under per_class_dp. By parallel composition the merged
+    # release is max over classes = this value (NOT the sum).
+    per_class_target_epsilon: float = 10.0
+    # Synthetic-merge controls (per_class_dp only). "public_counts" uses the
+    # dataset's real per-class counts (public for AFHQ) as mixing ratios;
+    # "equal" mixes 1:1:1; "custom" uses merge_class_ratios.
+    merge_ratio_mode: str = "public_counts"
+    merge_class_ratios: Optional[List[float]] = None
+    num_synthetic_per_class: int = 5000
+
     # Architecture (aligned with DSS_GAN-main)
     latent_dim: int = 152
     base_channels_gen: int = 148

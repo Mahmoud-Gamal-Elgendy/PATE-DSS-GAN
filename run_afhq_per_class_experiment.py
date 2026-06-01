@@ -1,14 +1,13 @@
 """
-AFHQ epsilon-milestone experiment for PATE-DSS-GAN.
+AFHQ per-class DP experiment for PATE-DSS-GAN (`training_mode = "per_class_dp"`).
 
-Single training run on AFHQ at 128×128 with target ε = 10 and batch size 128.
-Hyperparameters match DSS-GAN paper Table 13 (128×128 baseline).
-When cumulative privacy spend reaches ε ∈ {1, 2, 4, 8, 10}, the script
-saves a checkpoint and generates synthetic sample data at that budget.
+Trains one isolated PATE-DSS-GAN per AFHQ class (cat / dog / wild), each under
+its own ε = 10 budget, then merges the synthetic outputs at public class ratios.
+By parallel composition the merged release is (ε = 10, δ = 1e-5)-DP overall.
 
 Run from the project root:
     cd PATE-DSS-GAN
-    python run_afhq_epsilon_experiment.py
+    python run_afhq_per_class_experiment.py
 """
 
 from __future__ import annotations
@@ -16,14 +15,13 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# Ensure project root is on sys.path when run as a script.
 PROJECT_ROOT = Path(__file__).resolve().parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.config import TrainConfig
 from src.data.dataset import get_dataset
-from src.training.milestone_trainer import MilestoneTrainer
+from src.training.class_partitioned import ClassPartitionedRunner
 
 
 # ── Experiment constants ─────────────────────────────────────────────────────
@@ -31,36 +29,38 @@ from src.training.milestone_trainer import MilestoneTrainer
 TARGET_EPSILON = 10.0
 BATCH_SIZE = 128
 EPSILON_MILESTONES = [1.0, 2.0, 4.0, 8.0, 10.0]
-NUM_SAMPLE_IMAGES = 256          # synthetic images saved per milestone
-SAMPLE_GRID_SIZE = 16            # images in the preview grid
-
+NUM_SAMPLE_IMAGES = 256
+SAMPLE_GRID_SIZE = 16
 IMAGE_SIZE = 128
+CLASS_NAMES = ["cat", "dog", "wild"]
 
-RESULTS_ROOT = PROJECT_ROOT / "results" / "afhq_128_eps_milestone_bs128"
+RESULTS_ROOT = PROJECT_ROOT / "results" / "afhq_128_eps10_per_class"
 
 
 def build_config() -> TrainConfig:
-    """Inline AFHQ 128×128 config — DSS-GAN paper Table 13 (128 baseline)."""
+    """AFHQ 128×128 per-class config — DSS-GAN paper Table 13 (128 baseline)."""
     return TrainConfig(
-        # Dataset
         dataset_name="afhq",
         image_size=IMAGE_SIZE,
-        num_classes=3,
+        num_classes=3,                      # architecture kept 3-class (fixed label per run)
 
-        # Privacy (PATE-specific — not in DSS-GAN paper)
+        # Privacy / mode
+        training_mode="per_class_dp",
         target_epsilon=TARGET_EPSILON,
+        per_class_target_epsilon=TARGET_EPSILON,
         delta=1.0e-5,
         num_teachers=20,
         num_queries=5000,
-        n_student_steps=1,          # aligned with DSS-GAN D_STEPS=1
+        n_student_steps=1,
+        merge_ratio_mode="public_counts",
+        num_synthetic_per_class=NUM_SAMPLE_IMAGES,
 
         # Architecture — Table 13 @ 128×128
-        # Latent: D_base=92, D_dir=20 → z_dim=92+20×3=152
         latent_dim=152,
-        base_channels_gen=148,       # G channels 8×8–64×64; 128×128→168 via generator
-        base_channels_disc=96,       # D base channels
-        channel_max=512,             # D max channels
-        base_channels_teacher=32,    # PATE teacher CNN (not in paper)
+        base_channels_gen=148,
+        base_channels_disc=96,
+        channel_max=512,
+        base_channels_teacher=32,
         scan_directions=["row_fwd", "col_bwd", "diag_left"],
 
         # Training — Table 13 @ 128×128
@@ -88,11 +88,9 @@ def build_config() -> TrainConfig:
         gradient_clip_gen=10.0,
         gradient_clip_disc=15.0,
 
-        # Logging (milestones handled separately)
+        # Logging (milestones handled by MilestoneTrainer)
         log_interval=100,
-        save_interval=999999,     # disable periodic saves; milestones only
-        output_dir=str(RESULTS_ROOT / "samples"),
-        checkpoint_dir=str(RESULTS_ROOT / "checkpoints"),
+        save_interval=999999,
 
         # Misc
         seed=42,
@@ -115,22 +113,18 @@ def main() -> None:
     )
     print(f"[Setup] Dataset loaded — {len(dataset)} samples")
 
-    # MilestoneTrainer now lives in src/training/milestone_trainer.py (shared
-    # with the per-class DP orchestration). fixed_sample_label=None preserves
-    # the original behaviour of sampling random class labels.
-    trainer = MilestoneTrainer(
-        config=cfg,
+    runner = ClassPartitionedRunner(
+        base_config=cfg,
         dataset=dataset,
-        milestones=EPSILON_MILESTONES,
         results_root=RESULTS_ROOT,
+        class_names=CLASS_NAMES,
+        milestones=EPSILON_MILESTONES,
         num_sample_images=NUM_SAMPLE_IMAGES,
         sample_grid_size=SAMPLE_GRID_SIZE,
-        fixed_sample_label=None,
     )
-    trainer.train()
+    summary = runner.run()
 
-    print(f"\n[Done] Final ε={trainer.accountant.get_epsilon():.4f} | σ={trainer.sigma:.4f}")
-    print(f"[Done] Milestones saved: {sorted(trainer._saved)}")
+    print(f"\n[Done] Overall ε (parallel composition) = {summary['overall_epsilon']:.4f}")
     print(f"[Done] Results root: {RESULTS_ROOT}")
 
 

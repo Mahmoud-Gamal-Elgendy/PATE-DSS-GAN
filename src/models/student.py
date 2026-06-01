@@ -35,8 +35,19 @@ class MiniBatchStdDev(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         B, C, H, W = x.shape
-        G  = min(self.group_size, B) if self.group_size is not None else B
         F_ = self.num_features
+
+        # Pick a group size that always divides B (the reshape below requires
+        # B % G == 0). For the common case where B is already a multiple of
+        # group_size (e.g. B=128, group_size=8 → G=8) this is unchanged; for
+        # odd batch sizes — such as the label-filtered R1 sub-batch — it backs
+        # off to the largest divisor of B that is ≤ group_size (≥ 1).
+        if self.group_size is None:
+            G = B
+        else:
+            G = min(self.group_size, B)
+            while B % G != 0:
+                G -= 1
 
         y = x.reshape(G, -1, F_, C // F_, H, W)
         y = y - y.mean(dim=0, keepdim=True)

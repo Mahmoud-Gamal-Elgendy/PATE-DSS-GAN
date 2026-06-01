@@ -211,6 +211,15 @@ class ImageDatasetWrapper(Dataset):
     """
     Thin wrapper exposing a unified (image, label) interface with
     index-based subsetting support (used by the stratified partitioner).
+
+    Class-partition note (privacy):
+      Class filtering (``filter_by_class`` / ``get_class_subsets``) selects on
+      the *public* integer class label and produces strictly disjoint index
+      sets — no sample appears in two subsets, none is dropped. Augmentation is
+      applied per-sample inside the image transform (see ``_image_transform``),
+      never across samples, so partitioning by class introduces no
+      cross-class augmentation leakage. This makes class subsets a valid
+      disjoint partition for DP parallel composition.
     """
 
     def __init__(self, base_dataset: Dataset, indices: Optional[List[int]] = None) -> None:
@@ -231,6 +240,50 @@ class ImageDatasetWrapper(Dataset):
     def subset(self, sub_indices: List[int]) -> "ImageDatasetWrapper":
         mapped = [self._indices[i] for i in sub_indices]
         return ImageDatasetWrapper(self._ds, mapped)
+
+    # ------------------------------------------------------------------
+    # Class-based partitioning (public-label, disjoint — see class docstring)
+    # ------------------------------------------------------------------
+
+    def class_counts(self) -> Dict[int, int]:
+        """Return {class_id: count} over this (sub)set's samples."""
+        counts: Dict[int, int] = {}
+        for t in self.targets:
+            counts[t] = counts.get(t, 0) + 1
+        return dict(sorted(counts.items()))
+
+    def filter_by_class(self, class_id: int) -> "ImageDatasetWrapper":
+        """
+        Return a new wrapper containing only samples whose label == class_id.
+
+        Disjoint by construction (each sample has exactly one label) and never
+        duplicates a sample.
+        """
+        local_idxs = [i for i, t in enumerate(self.targets) if t == class_id]
+        return self.subset(local_idxs)
+
+    def get_class_subsets(self, verbose: bool = True) -> Dict[int, "ImageDatasetWrapper"]:
+        """
+        Split into one disjoint subset per distinct class label.
+
+        Asserts ``sum(len(subset)) == len(self)`` so a hard partition is proven:
+        no overlap, no dropped samples. Returns {class_id: ImageDatasetWrapper}.
+        """
+        counts = self.class_counts()
+        subsets = {c: self.filter_by_class(c) for c in counts}
+
+        total = sum(len(s) for s in subsets.values())
+        assert total == len(self), (
+            f"Class partition is not exhaustive/disjoint: "
+            f"sum(subset sizes)={total} != len(dataset)={len(self)}"
+        )
+
+        if verbose:
+            print(f"[ClassPartition] {len(subsets)} classes | total={total} (disjoint, exhaustive)")
+            for c, s in subsets.items():
+                print(f"  class {c}: {len(s)} samples")
+
+        return subsets
 
 
 # ---------------------------------------------------------------------------
