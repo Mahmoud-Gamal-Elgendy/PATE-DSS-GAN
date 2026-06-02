@@ -26,15 +26,15 @@ from src.training.class_partitioned import ClassPartitionedRunner
 
 # ── Experiment constants ─────────────────────────────────────────────────────
 
-TARGET_EPSILON = 10.0
+TARGET_EPSILON = 20.0
 BATCH_SIZE = 128
-EPSILON_MILESTONES = [1.0, 2.0, 4.0, 8.0, 10.0]
+EPSILON_MILESTONES = [1.0, 2.0, 4.0, 8.0, 10.0,20.0]
 NUM_SAMPLE_IMAGES = 256
 SAMPLE_GRID_SIZE = 16
 IMAGE_SIZE = 128
 CLASS_NAMES = ["cat", "dog", "wild"]
 
-RESULTS_ROOT = PROJECT_ROOT / "results" / "afhq_128_eps10_per_class"
+RESULTS_ROOT = PROJECT_ROOT / "results" / "afhq_128_eps20_per_class"
 
 
 def build_config() -> TrainConfig:
@@ -70,7 +70,7 @@ def build_config() -> TrainConfig:
         student_lr=3e-5,
         teacher_lr=0.0002,
         teacher_epochs=3,
-        retrain_interval=50,
+        retrain_interval=5,          # retrain every 5 outer steps (~8× during run)
         max_outer_steps=15000,
         optimizer_betas=[0.0, 0.99],
 
@@ -83,10 +83,10 @@ def build_config() -> TrainConfig:
         r1_gamma=5.0,
         r1_interval=4,
         use_diffaug=True,
-        diffaug_brightness=0.1,
-        diffaug_contrast=0.1,
+        diffaug_brightness=0.5,      # stronger aug → prevents color saturation
+        diffaug_contrast=0.5,
         diffaug_flip_prob=0.5,
-        gradient_clip_gen=10.0,
+        gradient_clip_gen=1.0,       # tighter clip → prevents tanh saturation
         gradient_clip_disc=15.0,
 
         # Logging (milestones handled by MilestoneTrainer)

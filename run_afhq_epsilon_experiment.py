@@ -70,7 +70,7 @@ def build_config() -> TrainConfig:
         student_lr=3e-5,
         teacher_lr=0.0002,
         teacher_epochs=3,
-        retrain_interval=50,
+        retrain_interval=5,          # retrain every 5 outer steps (~8× during run)
         max_outer_steps=15000,
         optimizer_betas=[0.0, 0.99],
 
@@ -83,10 +83,10 @@ def build_config() -> TrainConfig:
         r1_gamma=5.0,
         r1_interval=4,
         use_diffaug=True,
-        diffaug_brightness=0.1,
-        diffaug_contrast=0.1,
+        diffaug_brightness=0.5,      # stronger aug → prevents color saturation
+        diffaug_contrast=0.5,
         diffaug_flip_prob=0.5,
-        gradient_clip_gen=10.0,
+        gradient_clip_gen=1.0,       # tighter clip → prevents tanh saturation
         gradient_clip_disc=15.0,
 
         # Logging (milestones handled separately)
